@@ -1,0 +1,465 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>kubernetes 开发快速入门</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid="0"
+                  id="kubernetes"
+                  title="kubernetes 开发快速入门"
+                  environment="web"
+                  feedback-link="">
+    
+      <google-codelab-step label="个人介绍" duration="0">
+        <p>姓名: 郑佳金</p>
+<p>github ID: https://github.com/zjj2wry/</p>
+<p>工作经历：2016 ~ now</p>
+<ul>
+<li>kubernetes 开源</li>
+<li>Kubernetes 二次开发，多租户、资源管理、authn、authz、存储、ingress</li>
+<li>tensorflow on kubernetes</li>
+</ul>
+<p>爱好: 篮球、lol</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Kubernetes 介绍" duration="0">
+        <h3 is-upgraded>架构</h3>
+<p class="image-container"><img alt="post-ccm-arch" src="img/489a59063c47d451.png"></p>
+<h3 is-upgraded>pod 的设计</h3>
+<p>kubernetes pod 的设计是一个复合容器，多个容器会跑在一起作为一个 pod 调度到节点上。同一个 pod 的容器共享网络和存储。</p>
+<h4 is-upgraded>Sidecar pattern</h4>
+<h4 is-upgraded><img alt="sidecar-pattern" src="img/73df8d62e66bdf15.png"></h4>
+<h4 is-upgraded>Ambassador pattern</h4>
+<p class="image-container"><img alt="ambassador-pattern" src="img/7ebd6aeeb60dd280.png"></p>
+<h4 is-upgraded>Adapter pattern</h4>
+<p class="image-container"><img alt="adapter-pattern" src="img/a248c4c441b15755.png"></p>
+<h3 is-upgraded>create 一个 rs 的流程</h3>
+<p class="image-container"><img alt="create-rs" src="img/9c8cf37a3189dfeb.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="搭建本地开发环境" duration="0">
+        <h2 is-upgraded>拷贝 kubernetes 代码</h2>
+<pre><code>cd $GOPATH/src
+mkdir k8s.io
+cd k8s.io
+git clone git@github.com:kubernetes/kubernetes.git --depth=1
+Cloning into &#39;kubernetes&#39;...
+remote: Enumerating objects: 21946, done.
+remote: Counting objects: 100% (21946/21946), done.
+remote: Compressing objects: 100% (18065/18065), done.
+remote: Total 21946 (delta 7522), reused 9318 (delta 3326), pack-reused 0
+Receiving objects: 100% (21946/21946), 28.12 MiB | 396.00 KiB/s, done.
+Resolving deltas: 100% (7522/7522), done.
+Checking out files: 100% (19136/19136), done.
+</code></pre>
+<h2 is-upgraded>编译 k8s 源码并在本地启动 k8s 集群</h2>
+<p>安装 etcd</p>
+<pre><code>hack/install-etcd.sh
+</code></pre>
+<p>安装 cfssl，k8s 的各个组件使用证书通信</p>
+<pre><code>brew install cfssl
+</code></pre>
+<p>编译 k8s 源码并启动集群</p>
+<pre><code>hack/local-up-cluster.sh
+...
+Local Kubernetes cluster is running. Press Ctrl-C to shut it down.
+</code></pre>
+<p>使用编译好的 kubectl 访问集群，通过 <code>-v</code> flag 可以查看完整的请求过程</p>
+<pre><code>export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
+cluster/kubectl.sh cluster-info -v 8
+I0617 11:37:11.472294   79798 loader.go:359] Config loaded from file:  /var/run/kubernetes/admin.kubeconfig
+I0617 11:37:11.490024   79798 round_trippers.go:416] GET https://localhost:6443/api/v1/namespaces/kube-system/services?labelSelector=kubernetes.io%2Fcluster-service%3Dtrue
+I0617 11:37:11.490056   79798 round_trippers.go:423] Request Headers:
+I0617 11:37:11.490066   79798 round_trippers.go:426]     Accept: application/json, */*
+I0617 11:37:11.490076   79798 round_trippers.go:426]     User-Agent: kubectl/v0.0.0 (darwin/amd64) kubernetes/8f4cc7d
+I0617 11:37:11.505658   79798 round_trippers.go:441] Response Status: 200 OK in 15 milliseconds
+I0617 11:37:11.505747   79798 round_trippers.go:444] Response Headers:
+I0617 11:37:11.505775   79798 round_trippers.go:447]     Content-Type: application/json
+I0617 11:37:11.505793   79798 round_trippers.go:447]     Content-Length: 792
+I0617 11:37:11.505807   79798 round_trippers.go:447]     Date: Mon, 17 Jun 2019 03:37:11 GMT
+I0617 11:37:11.505900   79798 request.go:947] Response Body: {&#34;kind&#34;:&#34;ServiceList&#34;,&#34;apiVersion&#34;:&#34;v1&#34;,&#34;metadata&#34;:{&#34;selfLink&#34;:&#34;/api/v1/namespaces/kube-system/services&#34;,&#34;resourceVersion&#34;:&#34;279&#34;},&#34;items&#34;:[{&#34;metadata&#34;:{&#34;name&#34;:&#34;kube-dns&#34;,&#34;namespace&#34;:&#34;kube-system&#34;,&#34;selfLink&#34;:&#34;/api/v1/namespaces/kube-system/services/kube-dns&#34;,&#34;uid&#34;:&#34;b1098b28-d135-4ab1-aadb-1a3a29e2387a&#34;,&#34;resourceVersion&#34;:&#34;150&#34;,&#34;creationTimestamp&#34;:&#34;2019-06-17T03:34:32Z&#34;,&#34;labels&#34;:{&#34;addonmanager.kubernetes.io/mode&#34;:&#34;Reconcile&#34;,&#34;k8s-app&#34;:&#34;kube-dns&#34;,&#34;kubernetes.io/cluster-service&#34;:&#34;true&#34;,&#34;kubernetes.io/name&#34;:&#34;KubeDNS&#34;}},&#34;spec&#34;:{&#34;ports&#34;:[{&#34;name&#34;:&#34;dns&#34;,&#34;protocol&#34;:&#34;UDP&#34;,&#34;port&#34;:53,&#34;targetPort&#34;:53},{&#34;name&#34;:&#34;dns-tcp&#34;,&#34;protocol&#34;:&#34;TCP&#34;,&#34;port&#34;:53,&#34;targetPort&#34;:53}],&#34;selector&#34;:{&#34;k8s-app&#34;:&#34;kube-dns&#34;},&#34;clusterIP&#34;:&#34;10.0.0.10&#34;,&#34;type&#34;:&#34;ClusterIP&#34;,&#34;sessionAffinity&#34;:&#34;None&#34;},&#34;status&#34;:{&#34;loadBalancer&#34;:{}}}]}
+Kubernetes master is running at https://localhost:6443/
+KubeDNS is running at https://localhost:6443//api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+</code></pre>
+<p>如果之前已经编译过二进制，只是想启动集群，使用 <code>-o</code> flag</p>
+<pre><code>hack/local-up-cluster.sh -o _output/dockerized/bin/linux/amd64/
+</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="项目结构" duration="0">
+        <h2 is-upgraded>kubernetes 主仓库的项目结构</h2>
+<pre><code>├── Godeps
+├── _output
+│   └── local
+├── api
+│   ├── api-rules
+│   └── openapi-spec
+├── build	# 镜像文件
+...
+│   ├── pause # pause 可以看一下，k8s sidecar 机制实现需要用到的镜像
+├── cluster # yaml 文件，集群启动的一些 addons
+│   ├── addons
+...
+├── cmd # 各个组件的 main 入口
+...
+│   ├── hyperkube # hyperkube 包含了 k8s 所有的组件，hyperkube kube-apiserver == kube-aiserver
+│   ├── kube-apiserver
+│   ├── kube-controller-manager
+│   ├── kube-proxy
+│   ├── kube-scheduler
+│   ├── kubeadm
+│   ├── kubectl
+│   ├── kubelet
+├── docs
+├── hack # 脚本文件，测试启动的脚本，codegen 相关的脚本
+...
+├── logo
+├── pkg
+│   ├── api
+│   ├── apis # internal version 的 API 结构体
+│   ├── auth # auth 相关的代码，不用理会，k8s authn、authz 相关代码主要在 kubernetes/apiserver
+│   ├── capabilities
+│   ├── client
+│   ├── cloudprovider # 外部云提供商
+│   ├── controller # *k8s 原生controller 的代码*
+│   ├── credentialprovider # 外部云提供商证书相关
+│   ├── features # * feature getes，开启和关闭功能，新增的功能都要在这里测试 gates
+│   ├── fieldpath
+│   ├── generated
+│   ├── kubeapiserver # *apiserver 参数初始化和核心代码*
+│   ├── kubectl # *kubectl 的核心代码*
+│   ├── kubelet # *kubelet 的核心代码*
+│   ├── kubemark
+│   ├── master
+│   ├── printers # kubectl get 和 describe 命令的代码
+│   ├── probe
+│   ├── proxy
+│   ├── quota
+│   ├── registry # 实现了 apiserver storage 的核心代码
+│   ├── routes
+│   ├── scheduler # *调度器相关的代码*
+│   ├── security
+│   ├── securitycontext
+│   ├── serviceaccount
+│   ├── ssh
+│   ├── util
+│   ├── version
+│   ├── volume # *volume 接口的实现*
+│   ├── watch
+│   └── windows
+├── plugin
+│   └── pkg
+├── staging # *staging 目录放了 client-go apimachinery 等等通用仓库相关的代码*
+│   ├── publishing
+│   └── src
+├── test # 测试代码
+...
+├── third_party
+├── translations # kubectl 国际化的翻译
+└── vendor
+</code></pre>
+<h2 is-upgraded>核心的 lib</h2>
+<p>因为 k8s 很多 lib 会被开发者引用，所以 k8s 把核心的 lib 放到了一下四个仓库，在做二次开发的时候不要直接去引用 k8s 主仓库的代码</p>
+<ul>
+<li><a href="https://github.com/kubernetes/apimachinery" target="_blank">apimachinery</a>: Scheme, typing, encoding, decoding, and conversion packages for Kubernetes and Kubernetes-like API objects</li>
+</ul>
+<p class="image-container"><img alt="apiserver3" src="img/d34d7f2aa5115fcf.jpg"></p>
+<ul>
+<li><a href="https://github.com/kubernetes/client-go" target="_blank">client-go</a>：Go clients for talking to a kubernetes cluster<ul>
+<li>informer：二级缓存，注册事件的回调函数，list-watch k8s resources</li>
+<li>Lister: 从缓存中 list 和 get 数据</li>
+<li>clientset、dynamic client：k8s API 的 client</li>
+<li>workqueue：k8s controller 会先把事件放到队列中处理</li>
+<li>避免一个事件被处理多次，同一个对象被 enqueue 多次，dequeue 只会出现一次</li>
+<li>多线程并发处理</li>
+<li>ratelimit queue 避免 hot-loop 等等</li>
+<li>失败可以重新入队，保证状态最终一致<br><br></li>
+</ul>
+<img alt="client-go" src="img/f721e6778c66e723.png"></li>
+<li><a href="https://github.com/kubernetes/api" target="_blank">api</a>: Schema of the external API types that are served by the Kubernetes API server.</li>
+<li><a href="https://github.com/kubernetes/apiserver" target="_blank">apiserver</a>: Library for writing a Kubernetes-style API server.</li>
+</ul>
+<p class="image-container"><img alt="apiserver2" src="img/b932dc1d54f36872.jpg"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="使用 client-go 操作 kubernetes resource" duration="0">
+        <h2 is-upgraded>3 种 client</h2>
+<h3 is-upgraded>clientset</h3>
+<pre><code>clientset.AppsV1().Deployments(apiv1.NamespaceDefault).Get(&#34;demo-deployment&#34;, metav1.GetOptions{})
+</code></pre>
+<p>使用的最多的 client，使用非常简单 <code>GroupVersion().Resources().Ops()</code>，只支持 json 序列化</p>
+<h3 is-upgraded>dynamic client</h3>
+<pre><code>got, err := cl.Resource(resource).Namespace(tc.namespace).List(metav1.ListOptions{})
+</code></pre>
+<p>返回的是 map，通常会配合 API discovery 使用，只支持 json</p>
+<h3 is-upgraded>restclient</h3>
+<pre><code>result = &amp;v1beta2.Deployment{}
+err = c.client.Get().
+		Namespace(c.ns).
+		Resource(&#34;deployments&#34;).
+		Name(name).
+		VersionedParams(&amp;options, scheme.ParameterCodec).
+		Do().
+		Into(result)
+</code></pre>
+<p>支持 protobuf 和json 序列化，clientset 和 dynamic client 都是基于这个实现的</p>
+<h2 is-upgraded>options</h2>
+<h3 is-upgraded>Get</h3>
+<pre><code>// GetOptions is the standard query options to the standard REST get call.
+type GetOptions struct {
+...
+	// When specified:
+	// - if unset, then the result is returned from remote storage based on quorum-read flag;
+	// - if it&#39;s 0, then we simply return what we currently have in cache, no guarantee;
+	// - if set to non zero, then the result is at least as fresh as given rv.
+	ResourceVersion string `json:&#34;resourceVersion,omitempty&#34; protobuf:&#34;bytes,1,opt,name=resourceVersion&#34;`
+	// +k8s:deprecated=includeUninitialized,protobuf=2
+}
+</code></pre>
+<p>resource version</p>
+<ul>
+<li>如果不设置会直接从 etcd 读取</li>
+<li>如果设置为 0 会从 apiserver 的缓存去读</li>
+<li>设置为其他值会等对象的 resource version大于所设置的值，如果设置的很大会出现 timeout</li>
+</ul>
+<h3 is-upgraded>List</h3>
+<pre><code>// ListOptions is the query options to a standard REST list call.
+type ListOptions struct {
+	// A selector to restrict the list of returned objects by their labels.
+	// Defaults to everything.
+	// +optional
+	LabelSelector string `json:&#34;labelSelector,omitempty&#34; protobuf:&#34;bytes,1,opt,name=labelSelector&#34;`
+	// A selector to restrict the list of returned objects by their fields.
+	// Defaults to everything.
+	// +optional
+	FieldSelector string `json:&#34;fieldSelector,omitempty&#34; protobuf:&#34;bytes,2,opt,name=fieldSelector&#34;`
+	// When specified with a watch call, shows changes that occur after that particular version of a resource.
+	// Defaults to changes from the beginning of history.
+	// When specified for list:
+	// - if unset, then the result is returned from remote storage based on quorum-read flag;
+	// - if it&#39;s 0, then we simply return what we currently have in cache, no guarantee;
+	// - if set to non zero, then the result is at least as fresh as given rv.
+	// +optional
+	ResourceVersion string `json:&#34;resourceVersion,omitempty&#34; protobuf:&#34;bytes,4,opt,name=resourceVersion&#34;`
+}
+</code></pre>
+<h4 is-upgraded>LabelSelector</h4>
+<p>list 的过滤条件，可以为你的资源打上指定的标签来过滤</p>
+<h4 is-upgraded>FieldSelector</h4>
+<p>支持的功能较少，代码在 apiserver 是 hardcode的</p>
+<p>kubectl get 支持 LabelSelector 和 FieldSelector 查询</p>
+<p>–field-selector=&#34;: Selector (field query) to filter on, supports ‘=&#39;, ‘==&#39;, and ‘!=&#39;.(e.g. –field-selector<br>key1=value1,key2=value2). The server only supports a limited number of field queries per type.</p>
+<p>-l, –selector=&#34;: Selector (label query) to filter on, supports ‘=&#39;, ‘==&#39;, and ‘!=&#39;.(e.g. -l key1=value1,key2=value2)</p>
+<h3 is-upgraded>Watch</h3>
+<p>watch 也可以指定 resourceVersion，会从指定的 resourceVersion 开始去 watch 资源，在 informer 里面，一般都是先 list，把 resource version 设为 0，API Server 就可以从 cache 里面给我 list。List 完之后，把 list 的 resource version 取出来，并且设置为 watch 的 listOption，这样就可以保证 informer 拿到的 events 是连续的</p>
+<p>https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/client-go/tools/cache/reflector.go#L159~L312</p>
+<h3 is-upgraded>Update</h3>
+<p>k8s 所有的对象都有一个版本号，为了做<a href="https://zjj2wry.github.io/kubes/optimistic_concurrency_control/" target="_blank">乐观并发控制</a>，乐观并发控制就是认为在修改数据的时候会出现 race 的情况。k8s 的乐观并发控制是基于 cas 实现的，所以 update 操作通常也可以作为一个分布式锁来使用。通常在 update 前会先 get 拿到资源最新的 resourceVersion，然后修改其他信息后执行 update 操作。</p>
+<h3 is-upgraded>Patch</h3>
+<p>和 update 一样都是更新资源，但是 patch 支持更新部分结构</p>
+<h3 is-upgraded>Delete</h3>
+<pre><code>// DeleteOptions may be provided when deleting an API object.
+type DeleteOptions struct {
+...
+	// Whether and how garbage collection will be performed.
+	// Either this field or OrphanDependents may be set, but not both.
+	// The default policy is decided by the existing finalizer set in the
+	// metadata.finalizers and the resource-specific default policy.
+	// Acceptable values are: &#39;Orphan&#39; - orphan the dependents; &#39;Background&#39; -
+	// allow the garbage collector to delete the dependents in the background;
+	// &#39;Foreground&#39; - a cascading policy that deletes all dependents in the
+	// foreground.
+	// +optional
+	PropagationPolicy *DeletionPropagation `json:&#34;propagationPolicy,omitempty&#34; protobuf:&#34;varint,4,opt,name=propagationPolicy&#34;`
+}
+</code></pre>
+<p>DeletionPropagation</p>
+<ul>
+<li>orphan： 删除 owner，依赖项不处理，成为孤儿</li>
+<li>Background： 在后台删除依赖项，比如删除 deployment，deployment 会立刻被删除，然后后台再删 rs，最终被回收</li>
+<li>Foreground：依赖项被删除后再删除 owner 资源</li>
+</ul>
+<p>kubectl delete 可以通过 —cascade 指定删除策略</p>
+<p>–cascade=true: If true, cascade the deletion of the resources managed by this resource (e.g. Pods created by a ReplicationController).  Default true.</p>
+<h2 is-upgraded><a href="https://github.com/kubernetes/client-go/tree/master/examples" target="_blank">example</a></h2>
+<p>可以安装 <a href="https://kubernetes.io/docs/tasks/tools/install-minikube/" target="_blank">minikube</a> 来运行这些 example</p>
+<ul>
+<li>in cluster：你的程序运行在集群内部，这个时候的认证方式会走 service account 的流程，你对集群的权限取决于你的 service account 的权限</li>
+<li>out of cluster：需要提供 kubeconfig 文件来访问 apiserver</li>
+</ul>
+<pre><code>➜  out-of-cluster-client-configuration git:(master) ✗ pwd
+/Users/zhengjiajin/go/src/k8s.io/kubernetes/staging/src/k8s.io/client-go/examples/out-of-cluster-client-configuration
+➜  out-of-cluster-client-configuration git:(master) ✗ go run main.go --kubeconfig=/Users/zhengjiajin/.kube/config
+There are 9 pods in the cluster
+Pod example-xxxxx in namespace default not found
+</code></pre>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="kubernetes controller 快速入门" duration="0">
+        <h2 is-upgraded>controller workflow</h2>
+<p class="image-container"><img alt="control" src="img/804a203dd62db1f8.jpeg"></p>
+<p>黄色的部分是用户在写 controller 需要做的事情</p>
+<h2 is-upgraded>namespace controller</h2>
+<ol type="1">
+<li>注册事件监听</li>
+</ol>
+<pre><code>   	namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
+   		cache.ResourceEventHandlerFuncs{
+   			AddFunc: func(obj interface{}) {
+   				namespace := obj.(*v1.Namespace)
+   				namespaceController.enqueueNamespace(namespace)
+   			},
+   			UpdateFunc: func(oldObj, newObj interface{}) {
+   				namespace := newObj.(*v1.Namespace)
+   				namespaceController.enqueueNamespace(namespace)
+   			},
+   		},
+   		resyncPeriod,
+   	)
+</code></pre>
+<ol type="1">
+<li>Process item</li>
+</ol>
+<pre><code>   func (nm *NamespaceController) worker() {
+   	workFunc := func() bool {
+   		key, quit := nm.queue.Get()
+   		if quit {
+   			return true
+   		}
+   		defer nm.queue.Done(key)
+   
+   		err := nm.syncNamespaceFromKey(key.(string))
+   		if err == nil {
+   			// no error, forget this entry and return
+   			nm.queue.Forget(key)
+   			return false
+   		}
+   
+   		if estimate, ok := err.(*deletion.ResourcesRemainingError); ok {
+   			t := estimate.Estimate/2 + 1
+   			klog.V(4).Infof(&#34;Content remaining in namespace %s, waiting %d seconds&#34;, key, t)
+   			nm.queue.AddAfter(key, time.Duration(t)*time.Second)
+   		} else {
+   			// rather than wait for a full resync, re-add the namespace to the queue to be processed
+   			nm.queue.AddRateLimited(key)
+   			utilruntime.HandleError(err)
+   		}
+   		return false
+   	}
+   
+   	for {
+   		quit := workFunc()
+   
+   		if quit {
+   			return
+   		}
+   	}
+   }
+</code></pre>
+<ol type="1">
+<li>sync handle</li>
+</ol>
+<pre><code>   func (nm *NamespaceController) syncNamespaceFromKey(key string) (err error) {
+   	startTime := time.Now()
+   	defer func() {
+   		klog.V(4).Infof(&#34;Finished syncing namespace %q (%v)&#34;, key, time.Since(startTime))
+   	}()
+   
+   	namespace, err := nm.lister.Get(key)
+   	if errors.IsNotFound(err) {
+   		klog.Infof(&#34;Namespace has been deleted %v&#34;, key)
+   		return nil
+   	}
+   	if err != nil {
+   		utilruntime.HandleError(fmt.Errorf(&#34;Unable to retrieve namespace %v from store: %v&#34;, key, err))
+   		return err
+   	}
+   	return nm.namespacedResourcesDeleter.Delete(namespace.Name)
+   }
+</code></pre>
+<h2 is-upgraded><a href="https://github.com/kubernetes/community/blob/8decfe4/contributors/devel/controllers.md" target="_blank">best practices</a></h2>
+<pre><code>for {
+  desired := getDesiredState()
+  current := getCurrentState()
+  makeChanges(desired, current)
+}
+</code></pre>
+<ol type="1">
+<li>resyncPeriod 通常设置为 0，周期性的把 cache 中的数据重新 enqueue<pre><code>Informer().AddEventHandlerWithResyncPeriod(_,resyncPeriod)
+</code></pre>
+<ol type="1">
+<li>使用 lister 去执行 list 和 get 操作, 减少对 apiserver 的直接访问</li>
+</ol>
+<pre><code>controller.lister.Get(key)
+</code></pre>
+</li>
+<li>使用 <a href="https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/client-go/informers/factory.go" target="_blank">shareInformer</a> 共享缓存</li>
+<li>不要直接更新缓存的数据，而是使用 deepcopy 先拷贝数据<pre><code>object.DeepCopy()
+</code></pre>
+</li>
+<li>使用 owner reference 或者 finalizer 处理资源回收问题<ol type="1">
+<li>owner reference 表示资源属于谁，比如 pod 属于 deployment，那么在 deploy 删除的时候，pod 会自动被 k8s 的 gc 回收</li>
+<li>finalizer 是另一种异步回收机制，比如你的 controller 是创建了一个 vm，你想在删除 vm 的时候保证这个 vm 被删除，你可以先在 vm 上打一个标签，然后 controller 看到了这个标签就去删除 vm，删除了 vm 之后再移除这个标签，这样相当于有一个同步机制，vm 这个资源一定是在虚拟机真正被删除才从数据库中移除</li>
+</ol>
+</li>
+<li>sync handle 中一般最开始会先 get 这个 object 是否存在，不存在可以直接 forget 这个事件</li>
+</ol>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="others" duration="0">
+        <p>Custom resource define (crd)：k8s 自定义资源，用户可以创建自己的资源对象</p>
+<p>Operator: 比如 tf-operator 就是写了一个 tfjob 的 crd，然后通过 informer 写自己的 controller 实现分布式训练</p>
+<p>APIserver: 在 crd 之前自定义资源还有一个名字叫做 thirt party resource，后来改成了 custom resource define，最新的有一个叫 apiserver 的资源，其实和 custom resource define 是同一个东西，有一些性能上的优化，比如允许你去使用自己的 etcd 数据库等等</p>
+<p>kubebuilder: 构建自定义 controller 的 sdk</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="references" duration="0">
+        <ul>
+<li><a href="https://static.googleusercontent.com/media/research.google.com/zh-CN//pubs/archive/44843.pdf" target="_blank">Borg, Omega, and<br>Kubernetes</a></li>
+<li><a href="https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/" target="_blank">The Distributed System ToolKit: Patterns for Composite Containers</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/" target="_blank">What is Kubernetes</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+
+</body>
+</html>
